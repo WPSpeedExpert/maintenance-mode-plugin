@@ -3,7 +3,7 @@
  * Plugin Name:        Maintenance Mode Plugin
  * Plugin URI:         https://octahexa.com/
  * Description:        A plugin to manage maintenance mode with admin settings, time-based checks, and manual overrides.
- * Version:            2.3.3
+ * Version:            2.3.4
  * Author:             octahexa
  * Author URI:         https://octahexa.com
  * Text Domain:        maintenance-mode-plugin
@@ -120,7 +120,7 @@ function render_maintenance_mode_settings() {
         <hr>
         <h2><?php esc_html_e('Emergency Login', 'maintenance-mode-plugin'); ?></h2>
         <p><?php esc_html_e('Use the URL below for emergency access during maintenance:', 'maintenance-mode-plugin'); ?></p>
-        <p><code><?php echo esc_url(home_url('?emergency-login=1')); ?></code></p>
+        <p><code><?php echo esc_url(home_url('wp-login.php?emergency-login=1')); ?></code></p>
     </div>
     <?php
 }
