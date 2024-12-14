@@ -175,3 +175,12 @@ add_action('admin_menu', function () {
         'render_maintenance_mode_settings'
     );
 });
+
+/**
+ * Add a "Settings" link on the Plugins page.
+ */
+add_filter('plugin_action_links_' . plugin_basename(__FILE__), function ($links) {
+    $settings_link = '<a href="options-general.php?page=maintenance-mode">' . __('Settings', 'maintenance-mode-plugin') . '</a>';
+    array_unshift($links, $settings_link); // Add the link at the beginning of the list
+    return $links;
+});
