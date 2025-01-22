@@ -3,7 +3,7 @@
  * Plugin Name:        Maintenance Mode Plugin
  * Plugin URI:         https://octahexa.com/
  * Description:        A plugin to manage maintenance mode with admin settings, time-based checks, and manual overrides.
- * Version:            2.3.4
+ * Version:            2.3.5
  * Author:             octahexa
  * Author URI:         https://octahexa.com
  * Text Domain:        maintenance-mode-plugin
@@ -50,58 +50,42 @@ add_action('after_switch_theme', function () {
 /**
  * Enforce Maintenance Mode with Emergency Login
  */
-add_action('init', 'bg_maintenance_mode');
-function bg_maintenance_mode() {
-    // Allow access to the login page when the emergency login query parameter is present
-    if (isset($_GET['emergency-login']) && '1' === $_GET['emergency-login'] && strpos($_SERVER['REQUEST_URI'], 'wp-login.php') !== false) {
-        return; // Allow access to wp-login.php
-    }
+ add_action('init', 'bg_maintenance_mode', 1); // Lower priority to ensure it runs early
+ function bg_maintenance_mode() {
+     // Emergency login override
+     if (isset($_GET['emergency-login']) && '1' === $_GET['emergency-login']) {
+         return; // Allow login
+     }
 
-    // Disable maintenance mode if it is not enabled in the settings
-    if (!get_option('enable_maintenance_mode', false)) {
-        return; // Maintenance mode disabled via settings
-    }
+     if (!get_option('enable_maintenance_mode', false)) {
+         return; // Maintenance mode disabled via admin
+     }
 
-    // Set the timezone
-    $timezone_string = get_option('maintenance_timezone', 'Europe/Amsterdam');
-    try {
-        $timezone = new DateTimeZone($timezone_string);
-    } catch (Exception $e) {
-        $timezone = new DateTimeZone('UTC'); // Fallback to UTC if timezone is invalid
-    }
+     // Fetch timezone and maintenance times
+     $timezone_string = get_option('maintenance_timezone', 'Europe/Amsterdam');
+     $timezone = new DateTimeZone($timezone_string ?: 'UTC');
+     $maintenance_start = new DateTime(get_option('maintenance_start', '2024-11-29 18:00'), $timezone);
+     $maintenance_end = new DateTime(get_option('maintenance_end', '2024-11-29 19:00'), $timezone);
+     $current_time = new DateTime('now', $timezone);
 
-    // Get maintenance start and end times
-    $maintenance_start = get_option('maintenance_start', '2024-11-29 18:00');
-    $maintenance_end   = get_option('maintenance_end', '2024-11-29 19:00');
+     // Check time window if enabled
+     if (get_option('enable_time_check', false) && ($current_time < $maintenance_start || $current_time > $maintenance_end)) {
+         return;
+     }
 
-    $start_time = new DateTime($maintenance_start, $timezone);
-    $end_time   = new DateTime($maintenance_end, $timezone);
+     // Allow administrators
+     if (current_user_can('administrator')) {
+         return;
+     }
 
-    // Check if time-based maintenance is enabled
-    if (get_option('enable_time_check', false)) {
-        $current_time = new DateTime('now', $timezone);
-        if ($current_time < $start_time || $current_time > $end_time) {
-            return; // Current time is outside the maintenance window
-        }
-    }
-
-    // Allow administrators to bypass maintenance mode
-    if (current_user_can('administrator')) {
-        return;
-    }
-
-    // Fetch the maintenance message
-    $default_message = '<h1>We\'ll be back soon!</h1><p>The site is currently undergoing scheduled maintenance.</p>';
-    $maintenance_message = get_option('maintenance_message', $default_message);
-
-    // Enforce maintenance mode
-    header('Retry-After: 3600');
-    wp_die(
-        $maintenance_message,
-        'Maintenance Mode',
-        ['response' => 503]
-    );
-}
+     // Enforce maintenance mode
+     header('Retry-After: 3600');
+     wp_die(
+         get_option('maintenance_message', '<h1>We\'ll be back soon!</h1><p>The site is currently undergoing scheduled maintenance.</p>'),
+         'Maintenance Mode',
+         ['response' => 503]
+     );
+ }
 
 /**
  * Admin Settings Page
